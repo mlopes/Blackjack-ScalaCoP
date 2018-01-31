@@ -1,8 +1,31 @@
 object Blackjack extends App {
 
-  sealed trait Rank
+  sealed trait Rank {
+    override def toString: String = this match {
+      case Ace => "A"
+      case Two => "2"
+      case Three => "3"
+      case Four => "4"
+      case Five => "5"
+      case Six => "6"
+      case Seven => "7"
+      case Eight => "8"
+      case Nine => "9"
+      case Ten => "10"
+      case Jack => "J"
+      case Queen => "Q"
+      case King => "K"
+    }
+  }
 
-  sealed trait Suit
+  sealed trait Suit {
+    override def toString: String = this match {
+      case Diamonds => "♢"
+      case Hearts => "♡"
+      case Clubs => "♧"
+      case Spades => "♤"
+    }
+  }
 
   case class Card(rank: Rank, suit: Suit)
 
@@ -47,7 +70,13 @@ object Blackjack extends App {
 
   case object Spades extends Suit
 
-  case class Hand(cards: List[Card])
+  case class Hand(cards: List[Card]) {
+    override def toString: String = cards match {
+      case Card(r, s)::x::xs => s"$r$s  " + Hand(x::xs).toString
+      case Card(r, s)::xs => s"$r$s" + Hand(xs).toString
+      case Nil => ""
+    }
+  }
 
   object Deck {
     val full = Deck(
@@ -74,15 +103,16 @@ object Blackjack extends App {
   }
 
   def play(hand: Hand, deck: Deck): (Hand, Deck) = {
-    println(hand)
-    println("Would you like to draw a card? []")
+    println("Your current hand is:")
+    println(hand.toString)
+    println("Would you like to draw a new card? yes/no")
     scala.io.StdIn.readLine() match {
       case "yes" => {
         val (newHand, newDeck) = dealCard(hand, deck)
 
         play(newHand, newDeck)
       }
-      case _ => println("Game over. You should see your score now."); (hand, deck)
+      case _ => println("Game over."); (hand, deck)
     }
   }
 
