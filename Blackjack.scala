@@ -1,8 +1,47 @@
 object Blackjack extends App {
 
-  sealed trait Rank
+  sealed trait Rank {
+    override def toString: String = this match {
+      case Ace => "A"
+      case Two => "2"
+      case Three => "3"
+      case Four => "4"
+      case Five => "5"
+      case Six => "6"
+      case Seven => "7"
+      case Eight => "8"
+      case Nine => "9"
+      case Ten => "10"
+      case Jack => "J"
+      case Queen => "Q"
+      case King => "K"
+    }
 
-  sealed trait Suit
+    def score: Int = this match {
+      case Ace => 1
+      case Two => 2
+      case Three => 3
+      case Four => 4
+      case Five => 5
+      case Six => 6
+      case Seven => 7
+      case Eight => 8
+      case Nine => 9
+      case Ten => 10
+      case Jack => 10
+      case Queen => 10
+      case King => 10
+    }
+  }
+
+  sealed trait Suit {
+    override def toString: String = this match {
+      case Diamonds => "♢"
+      case Hearts => "♡"
+      case Clubs => "♧"
+      case Spades => "♤"
+    }
+  }
 
   case class Card(rank: Rank, suit: Suit)
 
@@ -47,7 +86,25 @@ object Blackjack extends App {
 
   case object Spades extends Suit
 
-  case class Hand(cards: List[Card])
+  case class Hand(cards: List[Card]) {
+    override def toString: String = cards match {
+      case Card(r, s)::x::xs => s"$r$s  " + Hand(x::xs).toString
+      case Card(r, s)::xs => s"$r$s" + Hand(xs).toString
+      case Nil => ""
+    }
+
+    val score: Int = cards.foldRight(0)(_.rank.score + _)
+    def scoreCategory: ScoreCategory = {
+      if (this.score < 21) Normal
+      else if (this.score == 21) Blackjack
+      else TooHigh
+    }
+  }
+
+  sealed trait ScoreCategory
+  case object Blackjack extends ScoreCategory
+  case object TooHigh extends ScoreCategory
+  case object Normal extends ScoreCategory
 
   object Deck {
     val full = Deck(
@@ -74,18 +131,33 @@ object Blackjack extends App {
   }
 
   def play(hand: Hand, deck: Deck): (Hand, Deck) = {
-    println(hand)
-    println("Would you like to draw a card? []")
+    println(s"\n  Hand: $hand")
+    println(s"  Score: ${hand.score}\n")
+    println("  Would you like to draw a new card [y/n]? ")
+
     scala.io.StdIn.readLine() match {
-      case "yes" => {
+      case "y" => {
         val (newHand, newDeck) = dealCard(hand, deck)
 
-        play(newHand, newDeck)
+        newHand.scoreCategory match {
+          case Normal => play(newHand, newDeck)
+          case Blackjack => println("  <<< BLACKJACK! You WIN! >>>\n");
+          case _ => println("  <<< Your hand is over 21! Game over >>>\n")
+        }
       }
-      case _ => println("Game over. You should see your score now."); (hand, deck)
+      case _ =>  println("  <<< Ok, no more cards for you. Game over >>>\n")
     }
+
+    (hand, deck)
   }
 
+  println("\n  ===========================================")
+  println("  =                                         =")
+  println("  =          Let's play Blackjack           =")
+  println("  =                                         =")
+  println("  ===========================================\n")
+
+  println("  Drawing your first 2 cards...")
   play(secondHand, secondDeck)
 }
 
