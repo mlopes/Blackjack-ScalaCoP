@@ -1,3 +1,5 @@
+import scala.io.StdIn
+
 object Blackjack extends App {
 
   sealed trait Rank {
@@ -18,7 +20,7 @@ object Blackjack extends App {
     }
 
     def score: Int = this match {
-      case Ace => 1
+      case Ace => 11
       case Two => 2
       case Three => 3
       case Four => 4
@@ -86,6 +88,11 @@ object Blackjack extends App {
 
   case object Spades extends Suit
 
+  sealed trait ScoreCategory
+  case object Blackjack extends ScoreCategory
+  case object TooHigh extends ScoreCategory
+  case object Normal extends ScoreCategory
+
   case class Hand(cards: List[Card]) {
     override def toString: String = cards match {
       case Card(r, s)::x::xs => s"$r$s  " + Hand(x::xs).toString
@@ -93,18 +100,30 @@ object Blackjack extends App {
       case Nil => ""
     }
 
-    val score: Int = cards.foldRight(0)(_.rank.score + _)
-    def scoreCategory: ScoreCategory = {
+    val score: Int = {
+      // simply add up all the card values
+      val rawScore: Int = cards.foldRight(0)(_.rank.score + _)
+
+      def optimizedScore(cards: List[Card], score: Int): Int = {
+        if (score > 21) {
+          cards match {
+            // demote each Ace from 11 points to 1 point as long as the total is > 21 points
+            case Card(Ace, _)::xs => optimizedScore(xs, score - 10)
+            case x::xs => optimizedScore(xs, score)
+            case Nil => score
+          }
+        } else score
+      }
+
+      optimizedScore(cards, rawScore)
+    }
+
+    val scoreCategory: ScoreCategory = {
       if (this.score < 21) Normal
       else if (this.score == 21) Blackjack
       else TooHigh
     }
   }
-
-  sealed trait ScoreCategory
-  case object Blackjack extends ScoreCategory
-  case object TooHigh extends ScoreCategory
-  case object Normal extends ScoreCategory
 
   object Deck {
     val full = Deck(
@@ -117,12 +136,6 @@ object Blackjack extends App {
     def shuffledDeck: Deck = Deck(scala.util.Random.shuffle(full.cards))
   }
 
-  val deck: Deck = Deck.shuffledDeck
-  val hand: Hand = Hand(List.empty)
-
-  val (firstHand, firstDeck) = dealCard(hand, deck)
-  val (secondHand, secondDeck) = dealCard(firstHand, firstDeck)
-
   def dealCard(hand: Hand, deck: Deck): (Hand, Deck) = {
     val (cardOption, newDeck) = deck.dealCard()
     val newHand = Hand(cardOption.toList++hand.cards)
@@ -130,34 +143,55 @@ object Blackjack extends App {
     (newHand, newDeck)
   }
 
-  def play(hand: Hand, deck: Deck): (Hand, Deck) = {
-    println(s"\n  Hand: $hand")
-    println(s"  Score: ${hand.score}\n")
-    println("  Would you like to draw a new card [y/n]? ")
+  def processHand(hand: Hand, deck: Deck): Unit = {
+    println(s"\n  Hand: $hand\n  Score: ${hand.score}\n")
 
-    scala.io.StdIn.readLine() match {
-      case "y" => {
-        val (newHand, newDeck) = dealCard(hand, deck)
-
-        newHand.scoreCategory match {
-          case Normal => play(newHand, newDeck)
-          case Blackjack => println("  <<< BLACKJACK! You WIN! >>>\n");
-          case _ => println("  <<< Your hand is over 21! Game over >>>\n")
-        }
-      }
-      case _ =>  println("  <<< Ok, no more cards for you. Game over >>>\n")
+    hand.scoreCategory match {
+      case Normal => playNewHand(hand, deck)
+      case Blackjack => println("  <<< BLACKJACK! You WIN! >>>\n"); asktoPlayAgain
+      case TooHigh => println("  <<< Your hand is over 21! Game over. >>>\n"); asktoPlayAgain
     }
-
-    (hand, deck)
   }
 
-  println("\n  ===========================================")
-  println("  =                                         =")
-  println("  =          Let's play Blackjack           =")
-  println("  =                                         =")
-  println("  ===========================================\n")
+  def asktoPlayAgain: Unit = {
+    val input = StdIn.readLine("\n  Would you like to play again [Y/n]? ")
 
-  println("  Drawing your first 2 cards...")
-  play(secondHand, secondDeck)
+    if (isInputYes(input)) newGame
+    else println("  Thank you for playing. Bye, bye.")
+  }
+
+  def playNewHand(hand: Hand, deck: Deck): Unit = {
+    val input: String = StdIn.readLine("  Would you like to draw a new card [Y/n]? ")
+
+    if (isInputYes(input)) {
+      val (newHand, newDeck) = dealCard(hand, deck)
+      processHand(newHand, newDeck)
+    } else println("  <<< Ok, no more cards for you. Game over >>>\n")
+  }
+
+  def isInputYes(input: String): Boolean = List("y", "Y", "").find(_ == input) match {
+    case Some(_) => true
+    case None => false
+  }
+
+  def printIntroMessage: Unit = {
+    println("\n  ===========================================")
+    println("  =                                         =")
+    println("  =          Let's play Blackjack           =")
+    println("  =                                         =")
+    println("  ===========================================\n")
+
+    println("  Drawing your first 2 cards...")
+  }
+
+  def newGame = {
+    val (firstHand, firstDeck) = dealCard(Hand(List.empty), Deck.shuffledDeck)
+    val (secondHand, secondDeck) = dealCard(firstHand, firstDeck)
+
+    printIntroMessage
+    processHand(secondHand, secondDeck)
+  }
+
+  newGame
 }
 
