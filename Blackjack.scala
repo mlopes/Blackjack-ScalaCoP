@@ -144,33 +144,35 @@ object Blackjack extends App {
   }
 
   def processHand(hand: Hand, deck: Deck): Unit = {
-    printHand(hand)
+    println(s"\n  Hand: $hand\n  Score: ${hand.score}\n")
 
     hand.scoreCategory match {
-      case Normal => playLoop(hand, deck)
-      case Blackjack => println("  <<< BLACKJACK! You WIN! >>>\n");
-      case _ => {
-        println("  <<< Your hand is over 21! Game over. >>>\n")
-
-        StdIn.readLine("\n  Would you like to play again [y/n]? ") match {
-          case "y" => newGame
-          case _ => println("  Thank you for playing. Bye, bye.")
-        }
-      }
+      case Normal => playNewHand(hand, deck)
+      case Blackjack => println("  <<< BLACKJACK! You WIN! >>>\n"); asktoPlayAgain
+      case TooHigh => println("  <<< Your hand is over 21! Game over. >>>\n"); asktoPlayAgain
     }
   }
 
-  def playLoop(hand: Hand, deck: Deck): (Hand, Deck) = {
-    if (StdIn.readLine("  Would you like to draw a new card [y/n]? ").equals("y")) {
-      val (newHand, newDeck) = dealCard(hand, deck)
+  def asktoPlayAgain: Unit = {
+    val input = StdIn.readLine("\n  Would you like to play again [Y/n]? ")
 
-      processHand(newHand, newDeck)
-    } else println("  <<< Ok, no more cards for you. Game over >>>\n")
-
-    (hand, deck)
+    if (isInputYes(input)) newGame
+    else println("  Thank you for playing. Bye, bye.")
   }
 
-  def printHand(hand: Hand): Unit = println(s"\n  Hand: $hand\n  Score: ${hand.score}\n")
+  def playNewHand(hand: Hand, deck: Deck): Unit = {
+    val input: String = StdIn.readLine("  Would you like to draw a new card [Y/n]? ")
+
+    if (isInputYes(input)) {
+      val (newHand, newDeck) = dealCard(hand, deck)
+      processHand(newHand, newDeck)
+    } else println("  <<< Ok, no more cards for you. Game over >>>\n")
+  }
+
+  def isInputYes(input: String): Boolean = List("y", "Y", "").find(_ == input) match {
+    case Some(_) => true
+    case None => false
+  }
 
   def printIntroMessage: Unit = {
     println("\n  ===========================================")
@@ -188,8 +190,6 @@ object Blackjack extends App {
 
     printIntroMessage
     processHand(secondHand, secondDeck)
-
-    playLoop(secondHand, secondDeck)
   }
 
   newGame
