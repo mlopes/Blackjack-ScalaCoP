@@ -104,18 +104,11 @@ object Blackjack extends App {
       // simply add up all the card values
       val rawScore: Int = cards.foldRight(0)(_.rank.score + _)
 
-      def optimizedScore(cards: List[Card], score: Int): Int = {
-        if (score > 21) {
-          cards match {
-            // demote each Ace from 11 points to 1 point as long as the total is > 21 points
-            case Card(Ace, _)::xs => optimizedScore(xs, score - 10)
-            case x::xs => optimizedScore(xs, score)
-            case Nil => score
-          }
-        } else score
-      }
-
-      optimizedScore(cards, rawScore)
+      // demote each Ace from 11 points to 1 point as long as the total is > 21 points
+      cards.foldRight(rawScore)((card: Card, currentScore: Int) => card.rank match {
+        case Ace if (currentScore > 21) => currentScore - 10
+        case _ => currentScore
+      })
     }
 
     val scoreCategory: ScoreCategory = {
